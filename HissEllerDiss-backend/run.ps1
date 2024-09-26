@@ -1,0 +1,1 @@
+docker run -it --rm -p 5208:5208 --name backend-api tobo303/hissellerdiss-backend:latest

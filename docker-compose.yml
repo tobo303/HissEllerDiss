@@ -1,0 +1,50 @@
+name: HissEllerDiss
+
+networks:
+  backend-network:
+  frontend-network:
+  rabbitmq-network:
+
+volumes:
+  rabbitmq-data:
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    hostname: ${RABBITMQ_HOSTNAME}
+    container_name: HissEllerDiss-rabbitmq
+    ports:
+      - ${RABBITMQ_EXT_PORT}:${RABBITMQ_INT_PORT}
+      - ${RABBITMQ_EXT_MANAGEMENT_PORT}:${RABBITMQ_INT_MANAGEMENT_PORT}
+    networks:
+      - rabbitmq-network
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASSWORD}
+  backend:
+    build: ./HissEllerDiss-backend
+    hostname: ${BACKEND_HOSTNAME}
+    container_name: HissEllerDiss-backend
+    ports:
+      - ${BACKEND_EXT_PORT}:${BACKEND_INT_PORT}
+    networks:
+      - backend-network
+      - rabbitmq-network
+    environment:
+      - HISSELLERDISS_API_URL=${BACKEND_HOSTNAME}
+    depends_on:
+      - rabbitmq
+  frontend:
+    build: ./HissElerrDiss-frontend
+    hostname: ${FRONTEND_HOSTNAME}
+    container_name: HissEllerDiss-frontend
+    ports:
+      - ${FRONTEND_EXT_PORT}:${FRONTEND_INT_PORT}
+    networks:
+      - frontend-network
+      - rabbitmq-network
+    depends_on:
+      - rabbitmq
+      - backend
