@@ -1,0 +1,6 @@
+@HissEllerDissApi_HostAddress = http://localhost:5208
+
+GET {{HissEllerDissApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

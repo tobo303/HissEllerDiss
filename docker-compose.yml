@@ -1,14 +1,15 @@
 name: HissEllerDiss
 
 networks:
-  backend-network:
-  frontend-network:
-  rabbitmq-network:
+  api-network:
+  service-network:
 
 volumes:
   rabbitmq-data:
 
 services:
+
+  #RabbitMQ container
   rabbitmq:
     image: rabbitmq:3-management-alpine
     hostname: ${RABBITMQ_HOSTNAME}
@@ -17,34 +18,53 @@ services:
       - ${RABBITMQ_EXT_PORT}:${RABBITMQ_INT_PORT}
       - ${RABBITMQ_EXT_MANAGEMENT_PORT}:${RABBITMQ_INT_MANAGEMENT_PORT}
     networks:
-      - rabbitmq-network
+      - service-network
+      - api-network
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASSWORD}
-  backend:
-    build: ./HissEllerDiss-backend
-    hostname: ${BACKEND_HOSTNAME}
-    container_name: HissEllerDiss-backend
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://${RABBITMQ_HOSTNAME}:${RABBITMQ_EXT_MANAGEMENT_PORT}
+      interval: 5m
+      timeout: 3s
+      retries: 3
+      start_period: 30s   
+
+  #ASP.NET Service container      
+  service:
+    build: ./HissEllerDiss-service
+    image: mindblaster303/hissellerdiss-service
+    hostname: ${SERVICE_HOSTNAME}
+    container_name: HissEllerDiss-service
     ports:
-      - ${BACKEND_EXT_PORT}:${BACKEND_INT_PORT}
+      - ${SERVICE_EXT_PORT}:${SERVICE_INT_PORT}
     networks:
-      - backend-network
-      - rabbitmq-network
-    environment:
-      - HISSELLERDISS_API_URL=${BACKEND_HOSTNAME}
+      - service-network
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://${SERVICE_HOSTNAME}:${SERVICE_EXT_PORT}/api/hissellerdiss
+      interval: 5m
+      timeout: 3s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - rabbitmq
-  frontend:
-    build: ./HissElerrDiss-frontend
-    hostname: ${FRONTEND_HOSTNAME}
-    container_name: HissEllerDiss-frontend
+      rabbitmq:
+        condition: service_healthy
+
+  # ASP.NET Core API container
+  api:
+    build: ./HissEllerDiss-api
+    image: mindblaster303/hissellerdiss-api
+    hostname: ${API_HOSTNAME}
+    container_name: HissEllerDiss-api
     ports:
-      - ${FRONTEND_EXT_PORT}:${FRONTEND_INT_PORT}
+      - ${API_EXT_PORT}:${API_INT_PORT}
     networks:
-      - frontend-network
-      - rabbitmq-network
+      - api-network
+      - service-network
     depends_on:
-      - rabbitmq
-      - backend
+      rabbitmq:
+        condition: service_healthy
+      service:
+        condition: service_healthy
